@@ -39,3 +39,18 @@ class UserStatsSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['email', 'role', 'is_staff', 'date_joined']
+
+class GoogleAuthSerializer(serializers.Serializer):
+    code = serializers.CharField(required=True, allow_blank=False)
+
+
+def generate_tokens_for_user(user) -> dict:
+    refresh = RefreshToken.for_user(user)
+    
+    refresh['email'] = user.email
+    refresh['role'] = getattr(user, 'role', 'user')  # Берем роль из модели или дефолт 'user'
+    
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
