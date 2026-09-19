@@ -3,6 +3,8 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from django.contrib.auth import get_user_model
 
+from apps.testapp.models import Post
+
 User = get_user_model()
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -54,3 +56,10 @@ def generate_tokens_for_user(user) -> dict:
         'refresh': str(refresh),
         'access': str(refresh.access_token),
     }
+
+class PostSerializer(serializers.ModelSerializer):
+    author_email = serializers.ReadOnlyField(source='author.email')
+
+    class Meta:
+        model = Post
+        fields = ['id', 'title', 'content', 'author_email', 'created_at']

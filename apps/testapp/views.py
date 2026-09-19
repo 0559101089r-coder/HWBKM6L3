@@ -1,19 +1,25 @@
 from django.contrib.auth import get_user_model
-from rest_framework import status
-from rest_framework.permissions import AllowAny
+from django.core.cache import cache
+
+from rest_framework import status, permissions
 from rest_framework.views import APIView
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
-from rest_framework import status, permissions
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from .models import Post
 from .serializers import (
     CustomTokenObtainPairSerializer,
     LogoutSerializer,
     UserStatsSerializer,
     GoogleAuthSerializer,
-    generate_tokens_for_user
+    generate_tokens_for_user,
+    PostSerializer
 )
+from .services import get_google_access_token, get_google_user_info
+
+User = get_user_model()
 
 from .services import get_google_access_token, get_google_user_info
 
@@ -87,3 +93,36 @@ class GoogleAuthView(APIView):
             },
             status=status.HTTP_200_OK if not is_new_user else status.HTTP_201_CREATED
         )
+    
+
+class PostListCreateAPIView(APIView):
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get(self, request):
+        cache_key = "posts_list"
+
+        # 1. Проверяем Redis
+        cached_posts = cache.get(cache_key)
+        if cached_posts is not None:
+            return Response(cached_posts, status=status.HTTP_200_OK)
+
+        # 2. Если нет в кэше — делаем запрос к БД
+        posts = Post.objects.select_related('author').all()
+        serializer = PostSerializer(posts, many=True)
+        data = serializer.data
+
+        # 3. Записываем в Redis на 60 секунд
+        cache.set(cache_key, data, timeout=60)
+
+        return Response(data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = PostSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(author=request.user)
+
+            # 4. Очищаем кэш при добавлении записи
+            cache.delete("posts_list")
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
