@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-
-from rest_framework import status, permissions
+from .tasks import send_welcome_email_task
+from rest_framework import status, permissions, generics
 from rest_framework.views import APIView
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
@@ -76,7 +76,12 @@ class GoogleAuthView(APIView):
         if is_new_user:
             user.set_unusable_password()
             user.save()
+         
+        if is_new_user:
+           user.set_unusable_password()
+           user.save()
 
+           send_welcome_email_task.delay(user.email)
         
         tokens = generate_tokens_for_user(user)
 

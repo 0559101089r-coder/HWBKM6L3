@@ -216,3 +216,22 @@ CACHES = {
         },
     }
 }
+
+# --- CELERY CONFIGURATION ---
+CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
+CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
+# Выводить отправленные письма прямо в консоль вместо реального SMTP
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Bishkek'
+
+# Жесткое отключение RESP3 для брокера и результат-бекенда:
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'protocol': 2,
+}
+CELERY_RESULT_BACKEND_TRANSPORT_OPTIONS = {
+    'protocol': 2,
+}
